@@ -61,6 +61,25 @@ def is_playlist_row_track_link(a) -> bool:
     return text.isdigit()
 
 
+def is_playlist_row_track_link(a) -> bool:
+    """
+    Heuristic filter to exclude 'recommended' tracks:
+    playlist rows have a numeric index in the first gridcell (aria-colindex="1").
+    """
+    try:
+        row = a.find_element(By.XPATH, "./ancestor::*[@role='row'][1]")
+    except Exception:
+        return False
+
+    try:
+        idx_cell = row.find_element(By.CSS_SELECTOR, '[role="gridcell"][aria-colindex="1"]')
+    except Exception:
+        return False
+
+    text = (idx_cell.text or "").strip()
+    return text.isdigit()
+
+
 def parse_track_from_link(a) -> dict | None:
     href = a.get_attribute("href") or ""
     if not href:
@@ -81,15 +100,32 @@ def parse_track_from_link(a) -> dict | None:
         if t and t not in artists:
             artists.append(t)
 
+    duration = None
+    try:
+        duration_el = row.find_element(By.CSS_SELECTOR, '[role="gridcell"][aria-colindex="5"]')
+        duration = (duration_el.text or "").strip() or None
+    except Exception:
+        pass
+
+    image = None
+    try:
+        img_el = row.find_element(By.CSS_SELECTOR, "img")
+        image = img_el.get_attribute("src") or None
+    except Exception:
+        pass
+
     full_link = href if href.startswith("http") else urljoin(PLAYLIST_URL, href)
 
     return {
         "id": track_id,
         "name": name,
         "artists": artists,
+        "duration": duration,
+        "image": image,
         "link": full_link,
         "embed_url": urljoin(PLAYLIST_URL, f"/embed/track/{track_id}"),
     }
+
 
 
 def scroll_collect_all_tracks(driver, scroll_container) -> list[dict]:

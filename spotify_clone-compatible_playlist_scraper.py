@@ -8,7 +8,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 
-PLAYLIST_URL = "YOUR LINK TO THE PLAYLIST"
+PLAYLIST_URL = "YOUR LINK HERE"
 OUTPUT_JSON = "playlist_min.json"
 
 TRACK_LINK_SELECTOR = 'a[data-testid="internal-track-link"][href^="/track/"]'
@@ -78,12 +78,28 @@ def parse_track_from_link(a) -> dict | None:
         if t and t not in artists:
             artists.append(t)
 
+    duration = None
+    try:
+        duration_el = row.find_element(By.CSS_SELECTOR, '[role="gridcell"][aria-colindex="5"]')
+        duration = (duration_el.text or "").strip() or None
+    except Exception:
+        pass
+
+    image = None
+    try:
+        img_el = row.find_element(By.CSS_SELECTOR, "img")
+        image = img_el.get_attribute("src") or None
+    except Exception:
+        pass
+
     full_link = href if href.startswith("http") else urljoin(PLAYLIST_URL, href)
 
     return {
         "id": track_id,
         "name": name,
         "artists": artists,
+        "duration": duration,
+        "image": image,
         "link": full_link,
         "embed_url": urljoin(PLAYLIST_URL, f"/embed/track/{track_id}"),
     }
